@@ -3,7 +3,7 @@
   <BasicLayout>
     <template #wrapper>
       <el-card class="box-card">
-        <el-form ref="queryForm" :model="queryParams" :inline="true" label-width="68px">
+        <el-form ref="queryForm" :model="queryParams" :inline="true" label-width="120px">
           <el-form-item label="标题" prop="title"><el-input
             v-model="queryParams.title"
             placeholder="请输入标题"
@@ -36,21 +36,30 @@
             @keyup.enter.native="handleQuery"
           />
           </el-form-item>
-          <el-form-item label="发布时间" prop="publishAt"><el-input
-            v-model="queryParams.publishAt"
-            placeholder="请输入发布时间"
+          <el-form-item label="发布时间-起始" prop="publishAtBeg"><el-date-picker
+            v-model="queryParams.publishAtBeg"
+            placeholder="请输入发布发布起始时间"
             clearable
             size="small"
             @keyup.enter.native="handleQuery"
           />
           </el-form-item>
 
+          <el-form-item label="发布时间-终止" prop="publishAtEnd"><el-date-picker
+            v-model="queryParams.publishAtEnd"
+            placeholder="请输入发布终止时间"
+            clearable
+            size="small"
+            @keyup.enter.native="handleQuery"
+          />
+          </el-form-item>
+          <!-- 搜索按钮 -->
           <el-form-item>
             <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
             <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
           </el-form-item>
         </el-form>
-
+        <!-- 第二栏操作按钮 -->
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
             <el-button
@@ -85,7 +94,7 @@
             </el-button>
           </el-col>
         </el-row>
-
+        <!-- 列表 -->
         <el-table v-loading="loading" :data="articleList" @selection-change="handleSelectionChange" @sort-change="handleSortChang">
 
           <el-table-column type="selection" width="55" align="center" /><el-table-column
@@ -160,7 +169,7 @@
             </template>
           </el-table-column>
         </el-table>
-
+        <!-- 底部分页 -->
         <pagination
           v-show="total>0"
           :total="total"
@@ -253,8 +262,8 @@ export default {
         author: undefined,
         content: undefined,
         status: undefined,
-        publishAt: undefined
-
+        publishAtBeg: undefined,
+        publishAtEnd: undefined
       },
       // 表单参数
       form: {

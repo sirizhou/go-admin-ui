@@ -39,6 +39,7 @@
           <el-form-item label="发布时间-起始" prop="publishAtBeg"><el-date-picker
             v-model="queryParams.publishAtBeg"
             placeholder="请输入发布发布起始时间"
+            type="datetime"
             clearable
             size="small"
             @keyup.enter.native="handleQuery"
@@ -48,6 +49,7 @@
           <el-form-item label="发布时间-终止" prop="publishAtEnd"><el-date-picker
             v-model="queryParams.publishAtEnd"
             placeholder="请输入发布终止时间"
+            type="datetime"
             clearable
             size="small"
             @keyup.enter.native="handleQuery"

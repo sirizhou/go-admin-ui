@@ -98,7 +98,7 @@
         </el-row>
         <!-- 列表 -->
         <el-table v-loading="loading" :data="articleList" @selection-change="handleSelectionChange" @sort-change="handleSortChang">
-
+          <!--prob对应数据response.data.list中的键-->
           <el-table-column type="selection" width="55" align="center" /><el-table-column
             label="序号"
             align="center"
@@ -227,7 +227,7 @@
 </template>
 
 <script>
-import { addArticle, delArticle, getArticle, listArticle, updateArticle } from '@/api/admin/article'
+import { addArticle, delArticle, getArticle, listArticle, updateArticle } from '@/api/admin/article' // @为调用的js文件名
 
 export default {
   name: 'Article',
@@ -298,7 +298,7 @@ export default {
       this.open = false
       this.reset()
     },
-    // 表单重置
+    // 表单重置,搜索栏
     reset() {
       this.form = {
 
@@ -307,7 +307,8 @@ export default {
         author: undefined,
         content: undefined,
         status: undefined,
-        publishAt: undefined
+        publishAtBeg: undefined,
+        publishAtEnd: undefined
       }
       this.resetForm('form')
     },

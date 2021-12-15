@@ -4,13 +4,13 @@
       <div class="salesCard">
         <el-tabs>
           <!-- 切换界面 -->
-          <el-tab-pane label="销售额">
+          <el-tab-pane label="数据">
             <el-row>
               <el-col :xl="16" :lg="12" :md="12" :sm="24" :xs="24">
-                <line-chart :list="lineData" title="销售额排行" />
+                <line-chart :list="lineData0" title="数据显示" />
               </el-col>
-              <el-col :xl="8" :lg="12" :md="12" :sm="24" :xs="24">
-                <rank-list title="门店销售排行榜" :list="rankList" />
+              <el-col :xl="16" :lg="12" :md="12" :sm="24" :xs="24">
+                <line-chart :list="lineData1" title="数据显示" />
               </el-col>
             </el-row>
           </el-tab-pane>
@@ -36,10 +36,16 @@
 import RankList from '@/components/RankList/index'
 import LineChart from '@/components/LineChart.vue'
 
-const lineData = []
+const lineData1 = []
+const lineData0 = []
 const lineData2 = []
-for (let i = 0; i < 12; i += 1) {
-  lineData.push({
+
+for (let i = 0; i < 1000; i += 1) {
+  lineData0.push({
+    x: `${i + 1}月`,
+    y: Math.floor(Math.random() * 1000) + 200
+  })
+  lineData1.push({
     x: `${i + 1}月`,
     y: Math.floor(Math.random() * 1000) + 200
   })
@@ -65,7 +71,8 @@ export default {
   },
   data() {
     return {
-      lineData,
+      lineData0,
+      lineData1,
       lineData2,
       rankList
     }

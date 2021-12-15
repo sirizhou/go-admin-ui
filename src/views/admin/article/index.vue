@@ -3,6 +3,7 @@
   <BasicLayout>
     <template #wrapper>
       <el-card class="box-card">
+        <!--inline好像没有必要用v-bind -->
         <el-form ref="queryForm" :model="queryParams" :inline="true" label-width="120px">
           <el-form-item label="标题" prop="title"><el-input
             v-model="queryParams.title"
@@ -74,6 +75,7 @@
             </el-button>
           </el-col>
           <el-col :span="1.5">
+            <!-- diabled 不能勾选多个 -->
             <el-button
               v-permisaction="['admin:article:edit']"
               type="success"
@@ -94,6 +96,16 @@
               @click="handleDelete"
             >删除
             </el-button>
+          </el-col>
+          <!-- 上页码 -->
+          <el-col>
+            <pagination
+              v-show="total>0"
+              :total="total"
+              :page.sync="queryParams.pageIndex"
+              :limit.sync="queryParams.pageSize"
+              @pagination="getList"
+            />
           </el-col>
         </el-row>
         <!-- 列表 -->
@@ -124,6 +136,11 @@
             label="状态"
             align="center"
             prop="status"
+            :show-overflow-tooltip="true"
+          /><el-table-column
+            label="解析"
+            align="center"
+            prop="calData"
             :show-overflow-tooltip="true"
           /><el-table-column
             label="发布时间"
@@ -180,7 +197,7 @@
           @pagination="getList"
         />
 
-        <!-- 添加或修改对话框 -->
+        <!-- 添加或修改对话框（弹窗，visible.sync=true弹出） -->
         <el-dialog :title="title" :visible.sync="open" width="500px">
           <el-form ref="form" :model="form" :rules="rules" label-width="80px">
 
@@ -216,6 +233,7 @@
               />
             </el-form-item>
           </el-form>
+          <!-- 按钮控件 -->
           <div slot="footer" class="dialog-footer">
             <el-button type="primary" @click="submitForm">确 定</el-button>
             <el-button @click="cancel">取 消</el-button>
@@ -227,19 +245,21 @@
 </template>
 
 <script>
+// import从其他模板（代码）中导入（其他模板中export）
 import { addArticle, delArticle, getArticle, listArticle, updateArticle } from '@/api/admin/article' // @为调用的js文件名
-
+// export 导出
 export default {
   name: 'Article',
   components: {
   },
+  // data定义变量，并赋初值
   data() {
     return {
-      // 遮罩层
+      // 遮罩层 用于加载表格
       loading: true,
-      // 选中数组
+      // 选中数组 列表中选择
       ids: [],
-      // 非单个禁用
+      // 非单个禁用 判断是否只选一个
       single: true,
       // 非多个禁用
       multiple: true,
@@ -249,13 +269,11 @@ export default {
       title: '',
       // 是否显示弹出层
       open: false,
+      // isEdit在html中没有出现
       isEdit: false,
-      // 类型数据字典
+      // 类型数据字典 在html中没有出现
       typeOptions: [],
       articleList: [],
-
-      // 关系表类型
-
       // 查询参数
       queryParams: {
         pageIndex: 1,
@@ -265,7 +283,8 @@ export default {
         content: undefined,
         status: undefined,
         publishAtBeg: undefined,
-        publishAtEnd: undefined
+        publishAtEnd: undefined,
+        formula: undefined
       },
       // 表单参数
       form: {
@@ -279,6 +298,7 @@ export default {
       }
     }
   },
+  // 实例创建时调用
   created() {
     this.getList()
   },
@@ -286,7 +306,14 @@ export default {
     /** 查询参数列表 */
     getList() {
       this.loading = true
-      listArticle(this.addDateRange(this.queryParams, this.dateRange)).then(response => {
+      // this.addDateRange 在src/utils/costum中定义，在main中全局挂载，
+      // 将dateRange赋值到queryParams中的begTime和emdTime
+      // 在这个函数中，dateRange为空，queryParams没有begTime和endTime，查询请求中begTime和endTime为空
+      // listArticle(this.addDateRange(this.queryParams, this.dateRange)).then(response => {
+
+      // 注释掉addDateRange函数，没有作用
+      listArticle(this.queryParams).then(response => {
+        // response.data.list 对于响应的json文件
         this.articleList = response.data.list
         this.total = response.data.count
         this.loading = false
@@ -300,8 +327,8 @@ export default {
     },
     // 表单重置,搜索栏
     reset() {
+      // form表单参数
       this.form = {
-
         id: undefined,
         title: undefined,
         author: undefined,
@@ -310,11 +337,15 @@ export default {
         publishAtBeg: undefined,
         publishAtEnd: undefined
       }
+      // resetForm在util/src/costum中
+      // resetForm(refName) 表单重置
       this.resetForm('form')
     },
+    // 没调用
     getImgList: function() {
       this.form[this.fileIndex] = this.$refs['fileChoose'].resultList[0].fullUrl
     },
+    // 没调用
     fileClose: function() {
       this.fileOpen = false
     },
@@ -327,8 +358,11 @@ export default {
     },
     /** 重置按钮操作 */
     resetQuery() {
-      this.dateRange = []
+      // 没用
+      // this.dateRange = []
+      // 重置搜索表达
       this.resetForm('queryForm')
+      // 搜索 更新列表
       this.handleQuery()
     },
     /** 新增按钮操作 */
@@ -336,23 +370,31 @@ export default {
       this.reset()
       this.open = true
       this.title = '添加文章'
+      // isEdit不知道有什么用
       this.isEdit = false
     },
     // 多选框选中数据
+    // <el-table-column type="selection"
+    // prop：id
     handleSelectionChange(selection) {
+      // 获取选中的id
       this.ids = selection.map(item => item.id)
+      // 判断单选还是多选
       this.single = selection.length !== 1
       this.multiple = !selection.length
     },
     /** 修改按钮操作 */
     handleUpdate(row) {
       this.reset()
+      // 没有输入row的情况下使用this.ids
       const id =
                 row.id || this.ids
+      // 调用getAritlce(id)获得Aritcle详细
       getArticle(id).then(response => {
         this.form = response.data
         this.open = true
         this.title = '修改文章'
+        // 不清楚isEdit作用，改成false好像也没有影响
         this.isEdit = true
       })
     },
@@ -360,9 +402,11 @@ export default {
     submitForm: function() {
       this.$refs['form'].validate(valid => {
         if (valid) {
+          // 有id调用更新，无调用插入
           if (this.form.id !== undefined) {
             updateArticle(this.form).then(response => {
               if (response.code === 200) {
+                // mgs：查询成功
                 this.msgSuccess(response.msg)
                 this.open = false
                 this.getList()
@@ -385,9 +429,11 @@ export default {
       })
     },
     /** 排序回调函数 */
+    // 没明白怎么传入的参数
     handleSortChang(column, prop, order) {
       prop = column.prop
       order = column.order
+      // 传到后台的是idOrder=desc
       if (this.order !== '' && this.order !== prop + 'Order') {
         this.queryParams[this.order] = undefined
       }

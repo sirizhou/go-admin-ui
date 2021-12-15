@@ -167,6 +167,7 @@
         />
 
         <!-- 添加或修改角色配置对话框 -->
+        <!-- visible.sysnc="true" 弹出 -->
         <el-dialog v-if="open" :title="title" :visible.sync="open" width="500px">
           <el-form ref="form" :model="form" :rules="rules" label-width="80px">
             <el-form-item label="角色名称" prop="roleName">
@@ -482,7 +483,7 @@ export default {
     handleAdd() {
       this.reset()
       // this.getMenuTreeselect(0)
-      this.open = true
+      this.open = true // 弹出
       this.title = '添加角色'
       this.isEdit = false
     },

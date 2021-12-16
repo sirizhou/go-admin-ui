@@ -58,6 +58,7 @@
           </el-form-item>
           <!-- 搜索按钮 -->
           <el-form-item>
+            <el-button type="primary" plain icon="el-icon-circle-plus-outline" size="mini" @click="selectFormula">公式解析</el-button>
             <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
             <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
           </el-form-item>
@@ -112,6 +113,7 @@
             :show-overflow-tooltip="true"
           /><el-table-column
             label="内容"
+            width="300"
             align="center"
             prop="content"
             :show-overflow-tooltip="true"
@@ -122,6 +124,7 @@
             :show-overflow-tooltip="true"
           /><el-table-column
             label="入库时间"
+            width="300"
             align="center"
             prop="createAt"
             sortable="custom"
@@ -155,6 +158,111 @@
           :limit.sync="queryParams.pageSize"
           @pagination="getList"
         />
+        <el-dialog title="解析公式库" :visible.sync="formulaOpen" width="1000px">
+          <el-form ref="queryFormulaForm" :model="queryFormulaParams" :inline="true" label-width="120px">
+            <el-form-item label="id" prop="id"><el-input
+              v-model="queryFormulaParams.id"
+              placeholder="请输入编号"
+              clearable
+              size="small"
+              @keyup.enter.native="handleFormulaQuery"
+            />
+            </el-form-item>
+            <el-form-item label="代号" prop="codename"><el-input
+              v-model="queryFormulaParams.codename"
+              placeholder="请输入代号"
+              clearable
+              size="small"
+              @keyup.enter.native="handleFormulaQuery"
+            />
+            </el-form-item>
+            <el-form-item label="名称" prop="name"><el-input
+              v-model="queryFormulaParams.name"
+              placeholder="请输入名称"
+              clearable
+              size="small"
+              @keyup.enter.native="handleFormulaQuery"
+            />
+            </el-form-item>
+            <!-- 搜索按钮 -->
+            <el-form-item>
+              <el-button type="primary" icon="el-icon-search" size="mini" @click="handleFormulaQuery">搜索公式</el-button>
+              <el-button icon="el-icon-refresh" size="mini" @click="resetFormulaQuery">重置</el-button>
+            </el-form-item>
+          </el-form>
+          <el-table
+            v-loading="loadingFormula"
+            :data="formulaList"
+            @selection-change="handleFormulaSelectionChange"
+            @sort-change="handleFormulaSortChange"
+          >
+            <el-table-column
+              type="selection"
+              label="(单选！)"
+              width="50"
+              align="center"
+            /><el-table-column
+              label="序号"
+              width="150"
+              align="center"
+              prop="id"
+              sortable="custom"
+              :show-overflow-tooltip="true"
+            /><el-table-column
+              label="代号"
+              width="150"
+              align="center"
+              prop="codename"
+              sortable="custom"
+              :show-overflow-tooltip="true"
+            /><el-table-column
+              label="名称"
+              width="150"
+              align="center"
+              prop="name"
+              :show-overflow-tooltip="true"
+            /><el-table-column
+              label="数据类型"
+              width="50"
+              align="center"
+              prop="dataType"
+              :show-overflow-tooltip="true"
+            /><el-table-column
+              label="处理方法"
+              width="150"
+              align="center"
+              prop="processingFormula"
+              :show-overflow-tooltip="true"
+            /><el-table-column
+              label="相关参数"
+              width="150"
+              align="center"
+              prop="formulaParameter"
+              :show-overflow-tooltip="true"
+            /><el-table-column
+              label="起始处理位置"
+              width="100"
+              align="center"
+              prop="positionBeg"
+              sortable="custom"
+              :show-overflow-tooltip="true"
+            /><el-table-column
+              label="截止处理位置"
+              width="100"
+              align="center"
+              prop="positionEnd"
+              sortable="custom"
+              :show-overflow-tooltip="true"
+            />
+          </el-table>
+          <pagination
+            v-show="totalFormula>0"
+            :total="totalFormula"
+            :page.sync="queryFormulaParams.pageIndex"
+            :limit.sync="queryFormulaParams.pageSize"
+            @pagination="getFormulaList"
+          />
+        </el-dialog>
       </el-card>
     </template>
   </BasicLayout>
@@ -163,6 +271,7 @@
 <script>
 // import从其他模板（代码）中导入（其他模板中export）getDato 用于显示详情
 import { listDato, delDato } from '@/api/admin/data-dato' // @为调用的js文件名
+import { listFormula } from '@/api/admin/formula'
 // export 导出
 export default {
   name: 'DataDato',
@@ -200,11 +309,31 @@ export default {
         pkid: undefined,
         content: undefined,
         createAtBeg: undefined,
-        createAtEnd: undefined
+        createAtEnd: undefined,
+        // 公式
+        formulaId: undefined
       },
       // 表单参数
       form: {
-      }
+      },
+      formulaOpen: false,
+      loadingFormula: false,
+      totalFormula: 0,
+      formulaList: [],
+      queryFormulaParams: {
+        pageIndex: 1,
+        pageSize: 10,
+        id: undefined,
+        codename: undefined,
+        name: undefined,
+        dataType: undefined,
+        processingFormula: undefined,
+        formulaParameter: undefined,
+        positionBeg: undefined,
+        posigionEnd: undefined
+      },
+      // 非单个禁用 判断是否只选一个
+      formulaSingle: true
     }
   },
   // 实例创建时调用
@@ -253,6 +382,8 @@ export default {
     resetQuery() {
       // 没用
       // this.dateRange = []
+      // 重置选定的公式 写法不优雅
+      this.queryParams.formulaId = undefined
       // 重置搜索表达
       this.resetForm('queryForm')
       // 搜索 更新列表
@@ -308,6 +439,57 @@ export default {
         }
       }).catch(function() {
       })
+    },
+    /** 公式选择弹窗 **/
+    selectFormula() {
+      this.formulaOpen = true
+      this.getFormulaList()
+    },
+    getFormulaList() {
+      this.loadingFormula = true
+      listFormula(this.queryFormulaParams).then(response => {
+        this.formulaList = response.data.list
+        this.totalFormula = response.data.count
+        this.loadingFormula = false
+      }
+      )
+    },
+    handleFormulaSortChange(column, prop, order) {
+      prop = column.prop
+      order = column.order
+      // 传到后台的是idOrder=desc
+      if (this.order !== '' && this.order !== prop + 'Order') {
+        this.queryFormulaParams[this.order] = undefined
+      }
+      if (order === 'descending') {
+        this.queryFormulaParams[prop + 'Order'] = 'desc'
+        this.order = prop + 'Order'
+      } else if (order === 'ascending') {
+        this.queryFormulaParams[prop + 'Order'] = 'asc'
+        this.order = prop + 'Order'
+      } else {
+        this.queryFormulaParams[prop + 'Order'] = undefined
+      }
+      this.getFormulaList()
+    },
+    handleFormulaQuery() {
+      this.queryFormulaParams.pageIndex = 1
+      this.getFormulaList()
+    },
+    resetFormulaQuery() {
+      this.resetForm('queryFormulaForm')
+      this.handleFormulaQuery()
+    },
+    handleFormulaSelectionChange(selection) {
+      this.formulaSingle = selection.length !== 1
+      if (selection.length > 1) {
+        this.msgError('单选（多选还没开发出来T.T）')
+      }
+      if (selection.length === 1) {
+        this.msgSuccess('您选择了一个公式,点右上角的x，然后开始搜索吧！')
+        this.queryParams.formulaId = selection.map(item => item.id)[0]
+        // this.getFormulaList()
+      }
     }
   }
 }

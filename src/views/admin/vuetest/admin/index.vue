@@ -40,7 +40,7 @@ const lineData1 = []
 const lineData0 = []
 const lineData2 = []
 
-for (let i = 0; i < 1000; i += 1) {
+for (let i = 0; i < 10; i += 1) {
   lineData0.push({
     x: `${i + 1}月`,
     y: Math.floor(Math.random() * 1000) + 200

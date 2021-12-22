@@ -76,6 +76,17 @@
             >删除
             </el-button>
           </el-col>
+          <el-col :span="1.5">
+            <el-button
+              v-permisaction="['admin:dato:plot']"
+              type="primary"
+              icon="el-icon-caret-right"
+              size="mini"
+              :disabled="multiple"
+              @click="handlePlot"
+            >绘图
+            </el-button>
+          </el-col>
           <!-- 上页码 -->
           <el-col>
             <pagination
@@ -158,7 +169,12 @@
           :limit.sync="queryParams.pageSize"
           @pagination="getList"
         />
-        <el-dialog title="解析公式库" :visible.sync="formulaOpen" width="1000px">
+        <el-dialog title="绘图" :visible.sync="plotOpen" width="1100px" @open="plot">
+          <template>
+            <div id="echarts_box" style="width: 1000px;height:600px;" />
+          </template>
+        </el-dialog>
+        <el-dialog title="解析公式库" :visible.sync="formulaOpen" width="1300px">
           <el-form ref="queryFormulaForm" :model="queryFormulaParams" :inline="true" label-width="120px">
             <el-form-item label="id" prop="id"><el-input
               v-model="queryFormulaParams.id"
@@ -190,6 +206,16 @@
               <el-button icon="el-icon-refresh" size="mini" @click="resetFormulaQuery">重置</el-button>
             </el-form-item>
           </el-form>
+          <el-row :gutter="10" class="mb8">
+            <el-button
+              v-permisaction="['admin:formula:add']"
+              type="primary"
+              icon="el-icon-plus"
+              size="mini"
+              @click="handleFormulaAdd"
+            >新增
+            </el-button>
+          </el-row>
           <el-table
             v-loading="loadingFormula"
             :data="formulaList"
@@ -253,7 +279,40 @@
               prop="positionEnd"
               sortable="custom"
               :show-overflow-tooltip="true"
-            />
+            /><el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+              <template slot-scope="scope">
+                <el-popconfirm
+                  class="delete-popconfirm"
+                  title="确认要修改吗?"
+                  confirm-button-text="修改"
+                  @onConfirm="handleFormulaUpdate(scope.row)"
+                >
+                  <el-button
+                    slot="reference"
+                    v-permisaction="['admin:formula:edit']"
+                    size="mini"
+                    type="text"
+                    icon="el-icon-edit"
+                  >修改
+                  </el-button>
+                </el-popconfirm>
+                <el-popconfirm
+                  class="delete-popconfirm"
+                  title="确认要删除吗?"
+                  confirm-button-text="删除"
+                  @onConfirm="handleFormulaDelete(scope.row)"
+                >
+                  <el-button
+                    slot="reference"
+                    v-permisaction="['admin:formula:remove']"
+                    size="mini"
+                    type="text"
+                    icon="el-icon-delete"
+                  >删除
+                  </el-button>
+                </el-popconfirm>
+              </template>
+            </el-table-column>
           </el-table>
           <pagination
             v-show="totalFormula>0"
@@ -263,6 +322,58 @@
             @pagination="getFormulaList"
           />
         </el-dialog>
+        <el-dialog :title="formulaTitle" :visible.sync="editFormulaOpen" width="500px">
+          <el-form ref="formulaForm" :model="formulaForm" :rules="formulaRules" label-width="80px">
+            <el-form-item label="代号" prop="codename">
+              <el-input
+                v-model="formulaForm.codename"
+                placeholder="代号"
+              />
+            </el-form-item>
+            <el-form-item label="名称" prop="name">
+              <el-input
+                v-model="formulaForm.name"
+                placeholder="名称"
+              />
+            </el-form-item>
+            <el-form-item label="数据类型" prop="dataType">
+              <el-input
+                v-model="formulaForm.dataType"
+                placeholder="float,int"
+              />
+            </el-form-item>
+            <el-form-item label="处理公式" prop="processingFormula">
+              <el-input
+                v-model="formulaForm.processingFormula"
+                placeholder="y=a*sqrt(x)+b, y=a*x+b, direct"
+              />
+            </el-form-item>
+            <el-form-item label="相关参数" prop="formulaParameter">
+              <el-input
+                v-model="formulaForm.formulaParameter"
+                placeholder="公式参数，按顺序填入，用空格隔开"
+              />
+            </el-form-item>
+            <el-form-item label="起始位置" prop="positionBeg">
+              <el-input
+                v-model="formulaForm.positionBeg"
+                placeholder="起始位置"
+                type="number"
+              />
+            </el-form-item>
+            <el-form-item label="截止位置" prop="positionEnd">
+              <el-input
+                v-model="formulaForm.positionEnd"
+                placeholder="截止位置"
+                type="number"
+              />
+            </el-form-item>
+          </el-form>
+          <div slot="footer" class="dialog-footer">
+            <el-button type="primary" @click="submitFormulaForm">确 定</el-button>
+            <el-button @click="cancelEditFormula">取 消</el-button>
+          </div>
+        </el-dialog>
       </el-card>
     </template>
   </BasicLayout>
@@ -271,8 +382,10 @@
 <script>
 // import从其他模板（代码）中导入（其他模板中export）getDato 用于显示详情
 import { listDato, delDato } from '@/api/admin/data-dato' // @为调用的js文件名
-import { listFormula } from '@/api/admin/formula'
+import { listFormula, getFormula, updateFormula, addFormula, delFormula } from '@/api/admin/formula'
+import echarts from 'echarts'
 // export 导出
+
 export default {
   name: 'DataDato',
   components: {
@@ -284,6 +397,9 @@ export default {
       loading: true,
       // 选中数组 列表中选择
       ids: [],
+      // 选中数组的值 用于绘图
+      times: [],
+      values: [],
       // 非单个禁用 判断是否只选一个
       single: true,
       // 非多个禁用
@@ -294,6 +410,8 @@ export default {
       title: '',
       // 是否显示弹出层
       open: false,
+      // 显示绘图
+      plotOpen: false,
       // isEdit在html中没有出现
       isEdit: false,
       // 类型数据字典 在html中没有出现
@@ -332,8 +450,12 @@ export default {
         positionBeg: undefined,
         posigionEnd: undefined
       },
+      formulaForm: {},
       // 非单个禁用 判断是否只选一个
-      formulaSingle: true
+      formulaSingle: true,
+      // 增加或修改公式的弹出层
+      formulaTitle: undefined,
+      editFormulaOpen: false
     }
   },
   // 实例创建时调用
@@ -395,6 +517,8 @@ export default {
     handleSelectionChange(selection) {
       // 获取选中的id
       this.ids = selection.map(item => item.id)
+      this.times = selection.map(item => item.createAt)
+      this.values = selection.map(item => item.calRes)
       // 判断单选还是多选
       this.single = selection.length !== 1
       this.multiple = !selection.length
@@ -438,6 +562,48 @@ export default {
           this.msgError(response.msg)
         }
       }).catch(function() {
+      })
+    },
+    handlePlot() {
+      //  绘图框 出发plot函数
+      this.plotOpen = true
+    },
+    plot() {
+      this.$nextTick(() => {
+        this.plotData = []
+        var myChart = echarts.init(document.getElementById('echarts_box'))
+        var option = {
+          tooltip: {},
+          dataZoom: [
+            {
+              type: 'slider', // 图表下方的伸缩条
+              show: true, // 是否显示
+              realtime: true, // 拖动滚动条时是否动态的更新图表数据
+              height: 15, // 滚动条高度
+              start: 0, // 滚动条开始位置（共100等份）
+              end: 30 // 结束位置（共100等份）
+            },
+            {
+              type: 'inside', // 鼠标滚轮
+              realtime: true
+              // 还有很多属性可以设置，详见文档
+            }
+          ],
+          xAxis: {
+            type: 'category',
+            data: this.times
+          },
+          yAxis: {
+            type: 'value'
+          },
+          series: [
+            {
+              data: this.values,
+              type: 'line'
+            }
+          ]
+        }
+        option && myChart.setOption(option)
       })
     },
     /** 公式选择弹窗 **/
@@ -490,6 +656,93 @@ export default {
         this.queryParams.formulaId = selection.map(item => item.id)[0]
         // this.getFormulaList()
       }
+    },
+    resetFormula() {
+      this.formulaForm = {
+        id: undefined,
+        codename: undefined,
+        name: undefined,
+        dataType: undefined,
+        processingFormula: undefined,
+        formulaParameter: undefined,
+        positionBeg: undefined,
+        posigionEnd: undefined
+      }
+      this.resetForm('formulaForm')
+    },
+    /** 新增按钮操作 */
+    handleFormulaAdd() {
+      this.resetFormula()
+      this.editFormulaOpen = true
+      this.title = '添加公式'
+    },
+    /** 修改按钮操作 */
+    handleFormulaUpdate(row) {
+      this.resetFormula()
+      // 没有输入row的情况下使用this.ids
+      const id = row.id
+      // 调用getAritlce(id)获得Aritcle详细
+      getFormula(id).then(response => {
+        this.formulaForm = response.data
+        this.editFormulaOpen = true
+        this.title = '修改公式'
+        // 不清楚isEdit作用，改成false好像也没有影响
+        // this.isEdit = true
+      })
+    },
+    /** 提交按钮 */
+    submitFormulaForm: function() {
+      this.$refs['formulaForm'].validate(valid => {
+        if (valid) {
+          // 有id调用更新，无调用插入
+          if (this.formulaForm !== undefined) {
+            updateFormula(this.formulaForm).then(response => {
+              if (response.code === 200) {
+                // mgs：查询成功
+                this.msgSuccess(response.msg)
+                this.editFormulaOpen = false
+                this.getFormulaList()
+              } else {
+                this.msgError(response.msg)
+              }
+            })
+          } else {
+            this.msgSuccess('add new formula')
+            addFormula(this.formulaForm).then(response => {
+              if (response.code === 200) {
+                this.msgSuccess(response.msg)
+                this.editFormulaOpen = false
+                this.getFormulaList()
+              } else {
+                this.msgError(response.msg)
+              }
+            })
+          }
+        }
+      })
+    },
+    /* 公式编辑框取消按钮 */
+    cancelEditFormula() {
+      this.editFormulaOpen = false
+      this.resetFormula()
+    },
+    handleFormulaDelete(row) {
+      var Ids = (row.id && [row.id])
+      this.$confirm('是否确认删除编号为"' + Ids + '"的数据项?', '警告', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(function() {
+        return delFormula({ 'ids': Ids })
+      }).then((response) => {
+        if (response.code === 200) {
+          this.msgSuccess(response.msg)
+          this.getFormulaList()
+        } else {
+          this.msgError(response.msg)
+        }
+      }).catch(function() {
+      })
     }
   }
 }

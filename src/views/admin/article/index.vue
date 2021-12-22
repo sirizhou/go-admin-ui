@@ -200,7 +200,6 @@
         <!-- 添加或修改对话框（弹窗，visible.sync=true弹出） -->
         <el-dialog :title="title" :visible.sync="open" width="500px">
           <el-form ref="form" :model="form" :rules="rules" label-width="80px">
-
             <el-form-item label="标题" prop="title">
               <el-input
                 v-model="form.title"

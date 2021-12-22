@@ -17,6 +17,24 @@ export function getDato(id) {
   })
 }
 
+// 新增formula
+export function addFormula(data) {
+  return request({
+    url: '/api/v1/formula',
+    method: 'post',
+    data: data
+  })
+}
+
+// 修改formula
+export function updateFormula(data) {
+  return request({
+    url: '/api/v1/formula/' + data.id,
+    method: 'put',
+    data: data
+  })
+}
+
 // 删除Dato
 export function delDato(data) {
   return request({
